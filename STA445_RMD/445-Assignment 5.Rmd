@@ -1,0 +1,196 @@
+---
+title: "Assignment 5"
+author: "Nicholas M."
+date: "2026-10-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(broom)
+library(readxl)
+
+library(lubridate) # handling of date and time objects
+```
+
+
+
+## Exercises  {#Exercises_Dates}
+
+### Exercise 1 {-}
+
+Convert the following to date or date/time objects.
+
+**a)** September 13, 2010.
+
+```{r}
+mdy('September 13, 2010')
+
+```
+
+
+**b)** Sept 13, 2010.
+
+```{r}
+
+#mdy('Sept 13, 2010')
+```
+
+This code is not working because the mdy function is not recognizing Sept. The information is not specific enough.
+
+**c)** Sep 13, 2010.
+
+```{r}
+mdy('Sep 13, 2010')
+```
+
+
+**d)** S 13, 2010. Comment on the month abbreviation needs.
+
+```{r}
+#mdy('S 13, 2010')
+```
+
+This function is not recognizing S
+
+**e)** 07-Dec-1941.
+
+```{r}
+dmy('07-Dec-1941')
+```
+
+
+**f)** 1-5-1998. Comment on why you might be wrong.
+
+```{r}
+dmy('1-5-1998')
+```
+Here we are not certain what comes first the month or the day.
+
+
+**g)** 21-5-1998. Comment on why you know you are correct.
+
+```{r}
+dmy('21-5-1998')
+```
+The day, month and year are all unique here.
+
+
+**h)** 2020-May-5 10:30 am
+
+```{r}
+ymd_hm('2020-May-5 10:30 am')
+```
+
+**i)** 2020-May-5 10:30 am PDT (ex Seattle)
+
+```{r}
+ymd_hm('2020-May-5 10:30 am', tz='US/Pacific')
+```
+
+
+**j)** 2020-May-5 10:30 am AST (ex Puerto Rico)
+
+```{r}
+ymd_hm('2020-May-5 10:30 am', tz='America/Puerto_Rico')
+```
+
+
+### Exercise 3 {-}
+
+Suppose you have arranged for a phone call to be at 3 pm on May 8, 2025 at Arizona time. However, the recipient will be in Auckland, NZ. What time will it be there? 
+
+```{r}
+ymd_hm('2025-May-8 3:00 pm', tz='US/Arizona')
+
+
+ymd_hm('2025-May-8 3:00 pm', tz='NZ')
+```
+Arizona is UTC -7 and NZ is UTC +12 or +13 depending on time of the year. Because this is in May it would push the time forward one hour making it UTC +13. Arizona time relative to UTC is 2025-May-8 8:00 am. NZ relative to UTC is 2025-May-9 4:00 am.
+
+### Exercise 4 {-}
+
+From this book's [GitHub](https://github.com/BuscagliaR/STA_444_v2/) directory, navigate to the `data-raw` directory and then download the `Pulliam_Airport_Weather_Station.csv` data file. (*There are several weather station files. Make sure you get the correct one!*)  There is a `DATE` column (is it of type `date` when you import the data?) as well as the Maximum and Minimum temperature. For the last 5 years of data included in the file, plot the time series of daily maximum temperature with date on the x-axis. Write your code so that it will work if I update the date set. *Hint: Find the maximum date in the data set and then subtract 5 years. Will there be a difference if you use `dyears(5)` vs `years(5)`? Which seems more appropriate here?*
+
+```{r}
+df <- read.csv("data-raw/Pulliam_Airport_Weather_Station.csv")
+```
+
+
+```{r}
+#check the type of the column
+class(df$DATE)
+```
+Date is of type character.
+
+```{r, include =FALSE}
+
+# get the maximum date in the df
+max_date <- max(df$DATE)
+
+# change it to a date type
+max_date <- as.Date(max_date)
+
+class(max_date)
+```
+
+To subtract 5 years from the maximum date I think we need to use dyears() instead of years because it accounts for discontinuities and gives us a more accurate result.
+
+```{r}
+start_date <- (max_date - dyears(5))
+```
+
+```{r, fig.width=12, fig.height=8}
+# now we want the time series for the 5 year of daily max temp.
+# first we need to select the rows that have a date of start_date or more
+
+df_new <- df |> filter(DATE >= start_date)
+
+# now we need to plot time on the x axis and TMAX on the y axis
+
+ggplot(data = df_new, aes(x=DATE, y=TMAX))+
+      geom_point()
+```
+
+### Exercise 5 {-}
+
+It turns out there is some interesting periodicity regarding the number of births on particular days of the year.
+
+**a)** Using the `mosaicData` package, load the data set `Births78` which records the number of children born on each day in the United States in 1978. Because this problem is intended to show how to calculate the information using the `date`, remove all the columns *except* `date` and `births`.
+
+```{r}
+library(mosaicData)
+
+data(Births78)
+
+Births78 <- Births78[, c(1,2)]
+```
+
+
+**b)** Graph the number of `births` vs the `date` with date on the x-axis. What stands out to you? Why do you think we have this trend?
+
+```{r}
+ggplot(data=Births78, aes(x=date, y=births))+
+      geom_point()
+```
+The first thing that stands out is that there is a gap in between the points where we could draw a wave. The numbers are either above or below that wave. I am not sure what explains this so I will not comment on that part. However, I do notice that there is an oscillation that happens between the months and the overall trend is upwards. I am not sure why this is the case but if I had to guess I would say the increase is directly correlated with the amount of "free time" the parents have available (9 months prior). If I am right then that would mean the most free time people generally have is around December each year given that the maximum amount of births happen in September.
+
+**c)** To test your assumption, we need to figure out the what day of the week each observation is. Use `dplyr::mutate` to add a new column named `dow` that is the day of the week (Monday, Tuesday, etc). This calculation will involve some function in the `lubridate` package and the `date` column.
+
+```{r}
+# we will need this function wday(x, label=TRUE, abbr=FALSE)
+
+Births78 <- Births78 |> mutate(dow = wday(date, label=TRUE, abbr=FALSE))
+```
+
+
+**d)** Plot the data with the point color being determined by the day of the week variable.
+
+```{r}
+ggplot(data=Births78, aes(x=date, y=births, colour = dow))+
+      geom_point()
+```
+Looks like my hypothesis was not being tested here. This is actually explaining the gap which exists in the graph. The colors show that this is due to there being a lower number of births on the weekend.
+

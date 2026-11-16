@@ -1,0 +1,179 @@
+---
+title: "445-Assignment 6"
+author: "Nicholas M."
+date: "2026-11-04"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyr)     # for the gather/spread commands
+library(dplyr)     # for the join stuff
+library(tidyverse) # dplyr, tidyr, ggplot2, etc.
+library(ggplot2)
+library(broom)
+library(readxl)
+
+library(lubridate) # handling of date and time objects
+```
+
+## Exercises  {#Exercises_DataReshaping}
+
+Many of the exercises below build and solidify our data wrangling skills that rely on the use of operations taught in Chapter 4 and Chapter 7. This is a great time to review those chapters if you have not been using the syntax frequently. The exercises below have been written in a way that YOU must do all the data wrangling yourself - the time for providing lots of code to help you over the hump is over - your data science wrangling skills start now!
+    
+### Exercise 1 {-}
+
+A common task is to take a set of data that has multiple categorical variables and create a table of the number of cases for each combination. An introductory statistics textbook contains a data set summarizing student surveys from several sections of an intro class. The two variables of interest are `Gender` and `Year` which are the students gender and year in college. *Note: you will need to refer to Chapter 4 and Chapter 7 for some of the operations needed below - this is a great time to review chapter 4!*
+
+**a)** Download the data set using the following:
+
+```{r}
+Survey <- read.csv('https://www.lock5stat.com/datasets2e/StudentSurvey.csv', na.strings=c('',' ')) 
+```
+
+**b)** Select the specific columns of interest **Year** and **Gender**
+
+```{r}
+Survey_df <- Survey[ , c(1,2)]
+head(Survey_df)
+```
+
+
+**c)** Convert the **Year** column to factors and properly order the factors based on common US progression (FirstYear - Sophomore - Junior - Senior)
+
+```{r}
+Survey_df$Year <- factor(Survey_df$Year, levels = c("FirstYear", "Sophomore", "Junior", "Senior"))
+
+# check the class to make sure it is a factor
+levels(Survey_df$Year)
+
+# success, so now we sort the column in ascending order
+#Survey_df <- Survey_df |> arrange(Year_modified)
+
+head(Survey_df)
+```
+
+
+**d)** Convert the **Gender** column to factors and rename them Male/Female.
+
+```{r}
+
+
+# change the value of the new column to Male if value = 'M' and do same for female
+Survey_df <- Survey_df |> mutate(Gender_as_factor = ifelse(Gender == 'M', 'Male', 'Female')) |> mutate(Gender_as_factor = as.factor(Gender_as_factor))
+
+
+# get rid of the first column
+Survey_df <- Survey_df[ , c(1,3)]
+
+head(Survey_df)
+```
+
+
+**e)** Produce a data set with eight rows and three columns that contains the number of responses for each gender:year combination. *You might want to look at the following functions: `dplyr::count` and `dplyr::drop_na`.*
+
+```{r}
+# I would first drop all the na values in the df
+Survey_df <- Survey_df |> drop_na()
+
+# now we need to count the responses for each group combination
+Survey_df <- Survey_df |> count(Gender_as_factor, Year)
+head(Survey_df)
+```
+
+
+**f)** Pivot the table in part (e) to produce a table of the number of responses in the following form:
+        
+|   Gender    |  First Year  |  Sophomore  |  Junior   |  Senior   |
+|:-----------:|:------------:|:----------:|:---------:|:---------:|
+|  **Female** |              |            |           |           |  
+|  **Male**   |              |            |           |           | 
+    
+```{r}
+Survey_df <- Survey_df |>  pivot_wider( names_from=Year, values_from=n )
+head(Survey_df)
+```
+
+
+### Exercise 3 {-} 
+
+For this problem we will consider two simple data sets.
+
+```{r}
+A <- tribble(
+  ~Name, ~Car,
+  'Alice', 'Ford F150',
+  'Bob',   'Tesla Model III',
+  'Charlie', 'VW Bug')
+
+B <- tribble(
+  ~First.Name, ~Pet,
+  'Bob',  'Cat',
+  'Charlie', 'Dog',
+  'Alice', 'Rabbit')
+```
+
+**a)** Combine the data frames together to generate a data set with three rows and three columns using `join` commands. 
+
+```{r}
+inner_join(A, B, by = c("Name" = "First.Name"))
+```
+
+
+**b)** It turns out that Alice also has a pet guinea pig. Add another row to the `B` data set. Do this using either the base function `rbind`, or either of the `dplyr` functions `add_row` or `bind_rows`.
+
+```{r}
+df1 <- data.frame(First.Name = 'Alice', Pet = 'Guinea Pig')
+# add it to the B dataframe
+B <- rbind( B, df1 )
+B
+```
+
+
+**c)** Combine again the `A` and `B` data sets together to generate a data set with four rows and three columns using `join` commands.
+
+```{r}
+inner_join(A, B, by = c("Name" = "First.Name"))
+```
+
+
+*Note: You may want to also try using `cbind` to address questions (a) and (c). Leave this as a challenge question and focus on the easier to use `join` functions introduced in this chapter.*
+
+### Exercise 4 {-} 
+
+The package `nycflights13` contains information about all the flights that arrived in or left from New York City in 2013. This package contains five data tables, but there are three data tables we will work with. The data table `flights` gives information about a particular flight, `airports` gives information about a particular airport, and `airlines` gives information about each airline. Create a table of all the flights on February 14th by Virgin America that has columns for the carrier, destination, departure time, and flight duration. Join this table with the airports information for the destination. Notice that because the column for the destination airport code doesn't match up between `flights` and `airports`, you'll have to use the `by=c("TableA.Col"="TableB.Col")` argument where you insert the correct names for `TableA.Col` and `TableB.Col`.
+
+```{r}
+library(nycflights13)
+
+data(flights)
+
+data(airports)
+
+data(airlines)
+
+```
+
+
+```{r}
+#join flights and airlines by carrier
+df<-left_join(flights, airports, by = c("dest"="faa"))
+
+#first filter by vx and 
+df <- df |> filter(month == 2 & day == 14 & carrier == "VX")
+
+#now we need carrier, destination, departure time, and flight duration
+# carrier, dest, dep_time, arr-time(arrival time - departure time)
+df <- df[, c(4, 7, 10, 14)]
+
+df$duration <- df$arr_time - df$dep_time
+
+df <- df[, c(1, 3, 4, 5)]
+
+head(df)
+```
+
+    

@@ -1,0 +1,208 @@
+---
+title: "Assignment 4"
+author: "Nicholas M."
+date: "2026-10-21"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(dplyr)
+library(broom)
+library(readxl)
+```
+
+### Exercise 1 {-}
+
+For the following regular expression, explain in words what it matches on. Then add test strings to demonstrate that it in fact does match on the pattern you claim it does. Make sure that your test set of strings has several examples that match as well as several that do not. Show at least two examples that return TRUE and two examples that return FALSE. *If you copy the Rmarkdown code for these exercises directly from my source pages, make sure to remove the `eval=FALSE` from the R-chunk headers.*
+
+Here is an example of what a solution might look like.
+
+**q)** This regular expression matches: 
+
+Any string that contains the lower-case letter "a".
+
+```{r}
+strings <- c('Adel', 'Mathematics', 'able', 'cheese')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, 'a') )
+```
+
+Please complete the questions below.
+
+**a)** This regular expression matches:  
+
+Any string that contains the exact sequence 'ab' within it.
+
+```{r}
+strings <- c('about', 'abort', 'yesterday', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, 'ab') )
+```
+
+**b)** This regular expression matches:  
+
+Any string that contains only a or b.
+
+```{r}
+strings <- c('boring', 'jungle', 'yesterday', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, '[ab]') )
+```
+
+**c)** This regular expression matches:  
+
+Any string that starts with an a or a b.
+
+```{r}
+strings <- c('boring', 'animal', 'dog', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, '^[ab]') )
+```
+
+**d)** This regular expression matches:  
+
+Any string containing one or more occurrences of digits followed by any white space and an 'a' or 'A' immediately after.
+
+```{r}
+strings <- c('537 az', '1\tAlpha', 'dog', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, '\\d+\\s[aA]') )
+```
+
+**e)** This regular expression matches:  
+
+Any string containing one or more occurrences of digits followed by zero or more repetitions of any white space and an 'a' or 'A' immediately after.
+
+```{r}
+strings <- c('537\naz', '1Alpha', 'dog', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, '\\d+\\s*[aA]') )
+```
+
+**f)** This regular expression matches:  
+
+Any string that contains zero or more repetitions of any character. Should encompass the entire sample space of strings.
+
+```{r}
+strings <- c('aaaa', '\t', 'dog', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, '.*') )
+```
+
+**g)** This regular expression matches:  
+
+Any string that begins with 2 repetitions of any alphanumeric character followed by the exact sequence 'bar'.
+
+```{r}
+strings <- c('a1bar', '8vbar', 'dog', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, '^\\w{2}bar') )
+```
+
+**h)** This regular expression matches:  
+
+Any string that contains the exact sequence 'foo' followed by a dot and the exact sequence 'bar', or any string that begins with 2 repetitions of any alphanumeric character followed by the exact sequence 'bar'.
+
+```{r}
+strings <- c('foo.bar', '8vbar', 'dog', 'tomorrow')
+data.frame( string = strings ) %>%
+  mutate( result = str_detect(string, '(foo\\.bar)|(^\\w{2}bar)') )
+```
+    
+### Exercise 2 {-}
+
+The following file names were used in a camera trap study. The S number represents the site, P is the plot within a site, C is the camera number within the plot, the first string of numbers is the YearMonthDay and the second string of numbers is the HourMinuteSecond.
+
+```{r}
+file.names <- c( 'S123.P2.C10_20120621_213422.jpg',
+                 'S10.P1.C1_20120622_050148.jpg',
+                 'S187.P2.C2_20120702_023501.jpg')
+```
+
+Produce a data frame with columns corresponding to the `site`, `plot`, `camera`, `year`, `month`, `day`, `hour`, `minute`, and `second` for these three file names. So we want to produce code that will create the data frame:
+    
+```{r}
+#Site Plot Camera Year Month Day Hour Minute Second
+# S123   P2    C10 2012    06  21   21     34     22
+#  S10   P1     C1 2012    06  22   05     01     48
+# S187   P2     C2 2012    07  02   02     35     01
+```
+
+
+```{r}
+df <- data.frame(fileNames = file.names) |> separate(fileNames, sep='\\.', into=c('Site','Plot','DateTime'), remove=TRUE) |> separate(DateTime, sep='_', into=c('Camera','Date','Time'), remove=TRUE) |> separate_wider_position(Date, widths = c(Year = 4, Month = 2, Day = 2)) |> separate_wider_position(Time, widths = c(Hour = 2, Minute = 2, Second = 2))
+```
+
+
+### Exercise 3 {-}
+
+The full text from Lincoln's Gettysburg Address is given below. It has been provided in a form that includes lots of different types of white space. Your goal is to calculate the mean word length of Lincoln's Gettysburg Address! *Note: you may consider 'battle-field' as one word with 11 letters or as two words 'battle' and 'field'. The first option a bit more difficult and technical!*.
+
+```{r}
+Gettysburg <- 'Four score and seven years ago our fathers brought forth on this 
+continent, a new nation, conceived in Liberty, and dedicated to the proposition 
+that all men are created equal.
+
+Now we are engaged in a great civil war, testing whether that nation, or any 
+nation so conceived and so dedicated, can long endure. We are met on a great 
+battle-field of that war. We have come to dedicate a portion of that field, as 
+a final resting place for those who here gave their lives that that nation might 
+live. It is altogether fitting and proper that we should do this.
+
+But, in a larger sense, we can not dedicate -- we can not consecrate -- we can 
+not hallow -- this ground. The brave men, living and dead, who struggled here, 
+have consecrated it, far above our poor power to add or detract. The world will 
+little note, nor long remember what we say here, but it can never forget what 
+they did here. It is for us the living, rather, to be dedicated here to the 
+unfinished work which they who fought here have thus far so nobly advanced. It 
+is rather for us to be here dedicated to the great task remaining before us -- 
+that from these honored dead we take increased devotion to that cause for which 
+they gave the last full measure of devotion -- that we here highly resolve that 
+these dead shall not have died in vain -- that this nation, under God, shall 
+have a new birth of freedom -- and that government of the people, by the people, 
+for the people, shall not perish from the earth.'
+```
+
+
+```{r}
+# first thing we need to do is count the total number of letters in the paragraph
+  # replace all character that are not letters with white spaces
+Gettysburg_truncated <- str_replace_all(Gettysburg, pattern='\\W', replacement='')
+
+  # use str_length() to count the number of letters
+str_length(Gettysburg_truncated)
+
+# then we need to count the total number of words
+  # get rid of the symbols leaving only the words separated by white space
+Gettysburg_ns <- str_replace_all(Gettysburg, pattern='[,.-]', replacement='')
+Gettysburg_ns <- str_replace_all(Gettysburg_ns, pattern='\\s+', replacement=' ')
+  # separate the text into a data frame separated by white space
+df2 <- data.frame(text = Gettysburg_ns) |> separate_wider_delim(
+  text,
+  delim = ' ',
+  names = NULL,
+  names_sep = '_',
+  cols_remove = TRUE
+)
+# then divide the total number of letters by the total number of words
+
+  #count the total number of columns that are not empty
+  count <- 0
+  for (i in df2) {
+    
+    i <- str_trim(i)
+    
+    if(i != "")
+    {
+      count <- count + 1
+    }
+    
+  }
+mean_word_len <- str_length(Gettysburg_truncated) / count
+mean_word_len
+
+```
+
+The mean word length of this text is 4.239852
